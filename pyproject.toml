@@ -34,10 +34,10 @@ test = ["pytest>=7.4.3"]
 test = "pytest tests/"
 format = "ruff format ."
 fix = "ruff --fix ."
-check = { composite = ["ruff format . --check", "ruff ."] }
+check = { composite = ["ruff format . --check", "ruff check ."] }
 
 [tool.ruff]
-select = [
+lint.select = [
     "E",   #https://docs.astral.sh/ruff/rules/#error-e
     "F",   #https://docs.astral.sh/ruff/rules/#pyflakes-f
     "I",   #https://docs.astral.sh/ruff/rules/#isort-i
@@ -53,7 +53,7 @@ select = [
     "NPY", #https://docs.astral.sh/ruff/rules/#numpy-specific-rules-npy
     "RUF", #https://docs.astral.sh/ruff/rules/#ruff-specific-rules-ruf
 ]
-ignore = ["S101", "E731", "E501"]
+lint.ignore = ["S101", "E731", "E501"]
 src = ["src"]
 
 [tool.pytest.ini_options]

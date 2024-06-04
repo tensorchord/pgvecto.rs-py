@@ -9,18 +9,18 @@ on:
     branches: [ "main" ]
     paths:
       - '.github/workflows/python_check.yml'
-      - 'bindings/python/src/**'
-      - 'bindings/python/tests/**'
-      - 'bindings/python/pyproject.toml'
-      - 'bindings/python/pdm.lock'
+      - 'src/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+      - 'pdm.lock'
   pull_request:
     branches: [ "main" ]
     paths:
       - '.github/workflows/python_check.yml'
-      - 'bindings/python/src/**'
-      - 'bindings/python/tests/**'
-      - 'bindings/python/pyproject.toml'
-      - 'bindings/python/pdm.lock'
+      - 'src/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+      - 'pdm.lock'
   merge_group:
   workflow_dispatch:
 

@@ -140,4 +140,3 @@ Run test in all environment:
 ```bash
 tox run
 ```
->>>>>>> eb2c25d (init: first commit)

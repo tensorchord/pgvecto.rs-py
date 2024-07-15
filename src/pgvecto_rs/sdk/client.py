@@ -11,7 +11,7 @@ from sqlalchemy.types import String
 
 from pgvecto_rs.sdk.filters import Filter
 from pgvecto_rs.sdk.record import Record, RecordORM, RecordORMType
-from pgvecto_rs.sqlalchemy import Vector
+from pgvecto_rs.sqlalchemy import VECTOR
 
 
 class PGVectoRs:
@@ -42,7 +42,7 @@ class PGVectoRs:
             )
             text: Mapped[str] = mapped_column(String)
             meta: Mapped[dict] = mapped_column(postgresql.JSONB)
-            embedding: Mapped[ndarray] = mapped_column(Vector(dimension))
+            embedding: Mapped[ndarray] = mapped_column(VECTOR(dimension))
 
         self._engine = create_engine(db_url)
         with Session(self._engine) as session:

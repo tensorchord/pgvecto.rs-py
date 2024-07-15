@@ -1,6 +1,4 @@
-from typing import List
-
-import numpy as np
+from typing import Tuple
 
 
 class PGVectoRsError(ValueError):
@@ -12,34 +10,37 @@ class NDArrayDimensionError(PGVectoRsError):
         super().__init__(f"ndarray must be 1D for vector, got {dim}D")
 
 
-class NDArrayDtypeError(PGVectoRsError):
-    def __init__(self, dtype: np.dtype) -> None:
-        super().__init__(f"ndarray data type must be numeric for vector, got {dtype}")
+class SparseExtraArgError(PGVectoRsError):
+    def __init__(self, dtype: type, dim: int) -> None:
+        super().__init__(
+            f"sparse array don't need dimension for {dtype} input, but got argument dim={dim}D"
+        )
 
 
-class BuiltinListTypeError(PGVectoRsError):
-    def __init__(self) -> None:
-        super().__init__("list data type must be numeric for vector")
+class SparseMissingArgError(PGVectoRsError):
+    def __init__(self, dtype: type) -> None:
+        super().__init__(
+            f"sparse array don't need dimension for {dtype} input, but got argument dim=None"
+        )
+
+
+class SparseShapeError(PGVectoRsError):
+    def __init__(self, shape: Tuple[int, int]) -> None:
+        super().__init__(f"sparse array must be (n,) for vector, got {shape}")
 
 
 class VectorDimensionError(PGVectoRsError):
     def __init__(self, dim: int) -> None:
-        super().__init__(f"vector dimension must be > 0, got {dim}")
+        super().__init__(f"vector dimension must be > 0 and < 65536, got {dim}")
 
 
-class SparseVectorTypeError(PGVectoRsError):
-    def __init__(
-        self, field: str, expected_type: List[type], actual_type: type
-    ) -> None:
+class SparseDimensionError(PGVectoRsError):
+    def __init__(self, dim: int) -> None:
         super().__init__(
-            f"{field} in SparseVector must be of type { ' or '.join(map(lambda t: t.__name__, expected_type))}, got {actual_type.__name__}"
+            f"sparse vector dimension must be > 0 and < 1048576, got {dim}"
         )
 
 
-class SparseVectorElementTypeError(PGVectoRsError):
-    def __init__(
-        self, field: str, expected_type: List[type], actual_type: type
-    ) -> None:
-        super().__init__(
-            f"elements of {field} in SparseVector must be of type { ' or '.join(map(lambda t: t.__name__, expected_type))}, got {actual_type.__name__}"
-        )
+class TypeNotFoundError(PGVectoRsError):
+    def __init__(self, vtype: str) -> None:
+        super().__init__(f"{vtype} type not found in the database")

@@ -4,29 +4,39 @@ import pytest
 from psycopg import Connection, sql
 
 from pgvecto_rs.psycopg import register_vector
-from pgvecto_rs.types import SparseVector
+from pgvecto_rs.types import BinaryVector, Float16Vector
 from tests import (
-    EXPECTED_NEG_COS_DIS,
-    EXPECTED_NEG_DOT_PROD_DIS,
-    EXPECTED_SQRT_EUCLID_DIS,
-    LEN_AFT_DEL,
-    OP_NEG_COS_DIS,
-    OP_NEG_DOT_PROD_DIS,
-    OP_SQRT_EUCLID_DIS,
-    TOML_SETTINGS,
+    BINARY_VECTORS,
+    COSINE_DIS_OP,
+    FILTER_VALUE,
+    FLOAT16_OP,
+    FLOAT16_VECTORS,
+    INDEX_OPTIONS,
+    INVALID_VECTORS,
+    JACCARD_DIS_OP,
+    L2_DIS_OP,
+    MAX_INNER_PROD_OP,
+    SPARSE_OP,
+    SPARSE_VECTORS,
     URL,
     VECTORS,
+    cosine_distance,
+    jaccard_distance,
+    l2_distance,
+    max_inner_product,
 )
 
 
-@pytest.fixture(scope="module")
-def conn():
+@pytest.fixture()
+def session():
     with psycopg.connect(URL) as conn:
         conn.execute("CREATE EXTENSION IF NOT EXISTS vectors;")
         register_vector(conn)
         conn.execute("DROP TABLE IF EXISTS tb_test_item;")
         conn.execute(
-            "CREATE TABLE tb_test_item (id bigserial PRIMARY KEY, embedding vector(3) NOT NULL);",
+            "CREATE TABLE tb_test_item (id bigserial PRIMARY KEY, \
+                embedding vector(3) NOT NULL, sparse_embedding svector(3), \
+                    float16_embedding vecf16(3), binary_embedding bvector(3));",
         )
         conn.commit()
         try:
@@ -36,127 +46,159 @@ def conn():
             conn.commit()
 
 
-@pytest.mark.parametrize(("index_name", "index_setting"), TOML_SETTINGS.items())
-def test_create_index(conn: Connection, index_name: str, index_setting: str):
+@pytest.mark.parametrize(("index_name", "index_option"), INDEX_OPTIONS.items())
+def test_create_index(session: Connection, index_name: str, index_option: str):
+    create_items(session)
     stat = sql.SQL(
         "CREATE INDEX {} ON tb_test_item USING vectors (embedding vector_l2_ops) WITH (options={});",
-    ).format(sql.Identifier(index_name), index_setting)
+    ).format(sql.Identifier(index_name), index_option)
 
-    conn.execute(stat)
-    conn.commit()
+    session.execute(stat)
+    session.commit()
 
 
-# The server cannot handle invalid vectors currently, see https://github.com/tensorchord/pgvecto.rs/issues/96
-# def test_invalid_insert(conn: Connection):
-#     for i, e in enumerate(INVALID_VECTORS):
-#         try:
-#             conn.execute("INSERT INTO tb_test_item (embedding) VALUES (%s);", (e, ) )
-#             pass
-#         except:
-#             conn.rollback()
-#         else:
-#             conn.rollback()
-#             raise AssertionError(
-#                 'failed to raise invalid value error for {}th vector {}'
-#                 .format(i, e),
-#             )
+def test_invalid_insert(session: Connection):
+    for i, e in enumerate(INVALID_VECTORS):
+        try:
+            session.execute("INSERT INTO tb_test_item (embedding) VALUES (%s);", (e,))
+        except Exception:
+            session.rollback()
+        else:
+            session.rollback()
+            raise AssertionError(
+                "failed to raise invalid value error for {}th vector {}".format(i, e),
+            )
+
 
 # =================================
 # Semetic search tests
 # =================================
 
 
-def test_copy(conn: Connection):
-    with conn.cursor() as cursor, cursor.copy(
-        "COPY tb_test_item (embedding) FROM STDIN (FORMAT BINARY)"
+def test_copy(session: Connection):
+    with session.cursor() as cursor, cursor.copy(
+        "COPY tb_test_item (embedding, sparse_embedding, float16_embedding, binary_embedding) \
+            FROM STDIN (FORMAT BINARY)"
     ) as copy:
-        for e in VECTORS:
-            copy.write_row([e])
+        for e in zip(VECTORS, SPARSE_VECTORS, FLOAT16_VECTORS, BINARY_VECTORS):
+            copy.write_row(e)
 
-    conn.commit()
-    cur = conn.execute("SELECT * FROM tb_test_item;", binary=True)
+    session.commit()
+    cur = session.execute("SELECT embedding FROM tb_test_item;", binary=True)
     rows = cur.fetchall()
+    # query dense
     assert len(rows) == len(VECTORS)
     for i, e in enumerate(rows):
-        assert np.allclose(e[1], VECTORS[i], atol=1e-10)
-    conn.execute("Delete FROM tb_test_item;")
-    conn.commit()
+        assert np.allclose(e, VECTORS[i], atol=1e-10)
+    # query sparse
+    cur = session.execute("SELECT * FROM tb_test_item;", binary=True)
+    rows = cur.fetchall()
+    assert len(rows) == len(VECTORS)
+    assert str(rows[0][1].tolist()) == "[1.0, 2.0, 3.0]"
+    assert str(rows[1][1].tolist()) == "[7.0, 7.0, 7.0]"
+    assert str(rows[3][1].tolist()) == "[1.0, 1.0, 1.0]"
+    session.execute("Delete FROM tb_test_item;")
+    session.commit()
 
 
-def test_copy_sparse(conn: Connection):
-    conn.execute("DROP TABLE IF EXISTS tb_test_svector;")
-    conn.execute(
-        "CREATE TABLE tb_test_svector (id bigserial PRIMARY KEY, embedding svector NOT NULL);"
-    )
-    conn.commit()
-    try:
-        rows_number = 0
-        with conn.cursor() as cursor, cursor.copy(
-            "COPY tb_test_svector (embedding) FROM STDIN (FORMAT BINARY)"
-        ) as copy:
-            copy.write_row([SparseVector(3, [0, 2], [1.0, 3.0])])
-            copy.write_row([SparseVector(3, np.array([0, 1, 2]), [1.0, 2.0, 3.0])])
-            copy.write_row([SparseVector(3, np.array([1, 2]), np.array([2.0, 3.0]))])
-        conn.commit()
-        rows_number = 3
-        cur = conn.execute("SELECT * FROM tb_test_svector;", binary=True)
-        rows = cur.fetchall()
-        assert len(rows) == rows_number
-        assert str(rows[0][1]) == "[1.0, 0.0, 3.0]"
-        assert str(rows[1][1]) == "[1.0, 2.0, 3.0]"
-        assert str(rows[2][1]) == "[0.0, 2.0, 3.0]"
-        conn.commit()
-
-    finally:
-        conn.execute("DROP TABLE IF EXISTS tb_test_svector;")
-        conn.commit()
-
-
-def test_insert(conn: Connection):
-    with conn.cursor() as cur:
+def create_items(session: Connection):
+    with session.cursor() as cur:
+        data = zip(VECTORS, SPARSE_VECTORS, FLOAT16_VECTORS, BINARY_VECTORS)
         cur.executemany(
-            "INSERT INTO tb_test_item (embedding) VALUES (%s);",
-            [(e,) for e in VECTORS],
+            "INSERT INTO tb_test_item (embedding, sparse_embedding, float16_embedding, binary_embedding) VALUES (%s, %s, %s, %s);",
+            [e for e in data],
         )
         cur.execute("SELECT * FROM tb_test_item;")
-        conn.commit()
+        session.commit()
         rows = cur.fetchall()
         assert len(rows) == len(VECTORS)
         for i, e in enumerate(rows):
             assert np.allclose(e[1], VECTORS[i], atol=1e-10)
 
 
-def test_squared_euclidean_distance(conn: Connection):
-    cur = conn.execute(
-        "SELECT embedding <-> %s FROM tb_test_item;",
-        (OP_SQRT_EUCLID_DIS,),
+def test_l2_distance(session: Connection):
+    create_items(session)
+    cur = session.execute(
+        "SELECT embedding, embedding <-> %s FROM tb_test_item;",
+        (L2_DIS_OP,),
     )
-    for i, row in enumerate(cur.fetchall()):
-        assert np.allclose(EXPECTED_SQRT_EUCLID_DIS[i], row[0], atol=1e-10)
+    for emb, dis in cur.fetchall():
+        expect = l2_distance(np.array(L2_DIS_OP), emb)
+        assert np.allclose(expect, dis, atol=1e-10)
 
 
-def test_negative_dot_product_distance(conn: Connection):
-    cur = conn.execute(
-        "SELECT embedding <#> %s FROM tb_test_item;",
-        (OP_NEG_DOT_PROD_DIS,),
+def test_max_inner_product(session: Connection):
+    create_items(session)
+    cur = session.execute(
+        "SELECT embedding, embedding <#> %s FROM tb_test_item;",
+        (MAX_INNER_PROD_OP,),
     )
-    for i, row in enumerate(cur.fetchall()):
-        assert np.allclose(EXPECTED_NEG_DOT_PROD_DIS[i], row[0], atol=1e-10)
+    for emb, dis in cur.fetchall():
+        expect = max_inner_product(np.array(MAX_INNER_PROD_OP), emb)
+        assert np.allclose(expect, dis, atol=1e-10)
 
 
-def test_negative_cosine_distance(conn: Connection):
-    cur = conn.execute("SELECT embedding <=> %s FROM tb_test_item;", (OP_NEG_COS_DIS,))
-    for i, row in enumerate(cur.fetchall()):
-        assert np.allclose(EXPECTED_NEG_COS_DIS[i], row[0], atol=1e-10)
+def test_cosine_distance(session: Connection):
+    create_items(session)
+    cur = session.execute(
+        "SELECT embedding, embedding <=> %s FROM tb_test_item;", (COSINE_DIS_OP,)
+    )
+    for emb, dis in cur.fetchall():
+        expect = cosine_distance(np.array(COSINE_DIS_OP), emb)
+        assert np.allclose(expect, dis, atol=1e-10)
 
 
-# # =================================
-# # Suffix functional tests
-# # =================================
+def test_binary_jaccard_distance(session: Connection):
+    create_items(session)
+    cur = session.execute(
+        "SELECT binary_embedding, binary_embedding <~> %s FROM tb_test_item;",
+        (BinaryVector(JACCARD_DIS_OP),),
+    )
+    for emb, dis in cur.fetchall():
+        expect = jaccard_distance(JACCARD_DIS_OP, emb.to_numpy())
+        assert np.allclose(expect, dis, atol=1e-10)
 
 
-def test_delete(conn: Connection):
-    conn.execute("DELETE FROM tb_test_item WHERE embedding = %s;", (VECTORS[0],))
-    conn.commit()
-    cur = conn.execute("SELECT * FROM tb_test_item;")
-    assert len(cur.fetchall()) == LEN_AFT_DEL
+def test_float16_vector(session):
+    create_items(session)
+    cur = session.execute(
+        "SELECT float16_embedding, float16_embedding <-> %s FROM tb_test_item;",
+        (Float16Vector(FLOAT16_OP),),
+    )
+    for emb, dis in cur.fetchall():
+        expect = l2_distance(FLOAT16_OP, emb.to_numpy())
+        assert np.allclose(expect, dis, atol=1e-2)
+
+
+def test_sparse_vector(session):
+    create_items(session)
+    cur = session.execute(
+        "SELECT sparse_embedding, sparse_embedding <-> %s FROM tb_test_item;",
+        (SPARSE_OP,),
+    )
+    for emb, dis in cur.fetchall():
+        expect = l2_distance(SPARSE_OP.to_numpy(), emb.to_numpy())
+        assert np.allclose(expect, dis, atol=1e-10)
+
+
+def test_filter(session):
+    create_items(session)
+    cur = session.execute(
+        "SELECT embedding <-> %s FROM tb_test_item WHERE embedding <-> %s < %s;",
+        (L2_DIS_OP, L2_DIS_OP, FILTER_VALUE),
+    )
+    for (dis,) in cur.fetchall():
+        assert dis < FILTER_VALUE
+
+
+# =================================
+# Suffix functional tests
+# =================================
+
+
+def test_delete(session: Connection):
+    create_items(session)
+    session.execute("DELETE FROM tb_test_item WHERE embedding = %s;", (VECTORS[0],))
+    session.commit()
+    cur = session.execute("SELECT * FROM tb_test_item;")
+    assert len(cur.fetchall()) == len(VECTORS) - 1

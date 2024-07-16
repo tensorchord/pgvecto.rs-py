@@ -80,15 +80,18 @@ INDEX_OPTION_DUMPS = [
         f"[optimizing]\noptimizing_threads = {os.cpu_count()}\n\n[indexing.hnsw]\nm = 1\n",
     ),
     (
-        IndexOption(index=Ivf(), quantization=Quantization(typ="trivial")),
-        f"[optimizing]\noptimizing_threads = {os.cpu_count()}\n\n[indexing.ivf]\n",
+        IndexOption(index=Ivf(quantization=Quantization(typ="trivial"))),
+        f"[optimizing]\noptimizing_threads = {os.cpu_count()}\n\n[indexing.ivf.quantization.trivial]\n",
     ),
     (
         IndexOption(
-            index=Hnsw(m=1, ef_construction=2),
-            quantization=Quantization(typ="product", ratio="x4"),
+            index=Hnsw(
+                m=1,
+                ef_construction=2,
+                quantization=Quantization(typ="product", ratio="x4"),
+            ),
         ),
-        f"[optimizing]\noptimizing_threads = {os.cpu_count()}\n\n[indexing.hnsw]\nm = 1\nef_construction = 2\n",
+        f'[optimizing]\noptimizing_threads = {os.cpu_count()}\n\n[indexing.hnsw]\nm = 1\nef_construction = 2\n\n[indexing.hnsw.quantization.product]\nratio = "x4"\n',
     ),
 ]
 # ==== test_create_index ====

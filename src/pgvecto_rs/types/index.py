@@ -77,11 +77,9 @@ class IndexOption:
         self,
         index: Union[Hnsw, Ivf, Flat],
         threads: Optional[int] = None,
-        quantization: Optional[Quantization] = None,
     ):
         self.index = index
         self.threads = threads or os.cpu_count() or 1
-        self.quantization = quantization
 
     def dump(self) -> dict:
         return {

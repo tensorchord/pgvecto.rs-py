@@ -4,28 +4,35 @@ from typing import Union
 import numpy as np
 
 from pgvecto_rs.errors import (
+    SparseDimUnequalError,
     SparseExtraArgError,
     SparseMissingArgError,
     SparseShapeError,
+    ToDBDimUnequalError,
 )
 
-NO_DEFAULT = object()
+
+class NoDefault:
+    pass
+
+
+NO_DEFAULT = NoDefault()
 
 
 class SparseVector:
     def __init__(self, value, dimensions=NO_DEFAULT, /):
         if value.__class__.__module__.startswith("scipy.sparse."):
-            if dimensions is not NO_DEFAULT:
+            if not isinstance(dimensions, NoDefault):
                 raise SparseExtraArgError(type(value), dimensions)
 
             self._from_sparse(value)
         elif isinstance(value, dict):
-            if dimensions is NO_DEFAULT:
+            if isinstance(dimensions, NoDefault):
                 raise SparseMissingArgError(dict)
 
             self._from_dict(value, dimensions)
         else:
-            if dimensions is not NO_DEFAULT:
+            if not isinstance(dimensions, NO_DEFAULT):
                 raise SparseExtraArgError(type(value), dimensions)
 
             self._from_dense(value)
@@ -65,9 +72,8 @@ class SparseVector:
         return vec
 
     def to_numpy(self):
-        vec = np.repeat(0.0, self._dim).astype(np.float32)
-        for i, v in zip(self._indices, self._values):
-            vec[i] = v
+        vec = np.zeros(self._dim).astype(np.float32)
+        vec[self._indices] = self._values
         return vec
 
     def to_text(self):
@@ -91,10 +97,7 @@ class SparseVector:
         values_bytes = values.tobytes()
         # check indices and values length is the same
         if indices_len != values_len:
-            raise ValueError(
-                "sparse vector expected indices length %d to match values length %d"
-                % (indices_len, values_len)
-            )
+            raise SparseDimUnequalError(indices_len, values_len)
         return (
             pack("<I", self._dim)
             + pack("<I", indices_len)
@@ -129,7 +132,7 @@ class SparseVector:
 
     def _from_dense(self, value):
         self._dim = len(value)
-        self._indices = [i for i, v in enumerate(value) if v != 0]
+        self._indices = [i for i, v in enumerate(value) if np.isclose(v, 0)]
         self._values = [float(value[i]) for i in self._indices]
 
     @classmethod
@@ -176,9 +179,7 @@ class SparseVector:
             value = cls(value)
 
         if dim is not None and value.dimensions() != dim:
-            raise ValueError(
-                "expected %d dimensions, not %d" % (dim, value.dimensions())
-            )
+            raise ToDBDimUnequalError(dim, value.dimensions())
 
         return value.to_text()
 

@@ -20,7 +20,7 @@ class SparseExtraArgError(PGVectoRsError):
 class SparseMissingArgError(PGVectoRsError):
     def __init__(self, dtype: type) -> None:
         super().__init__(
-            f"sparse array don't need dimension for {dtype} input, but got argument dim=None"
+            f"sparse array need dimension for {dtype} input, but got argument dim=None"
         )
 
 
@@ -41,6 +41,29 @@ class SparseDimensionError(PGVectoRsError):
         )
 
 
+class SparseDimUnequalError(PGVectoRsError):
+    def __init__(self, indices_len: int, values_len: int) -> None:
+        super().__init__(
+            f"sparse vector expected indices length {indices_len} to match values length {values_len}"
+        )
+
+
+class ToDBDimUnequalError(PGVectoRsError):
+    def __init__(
+        self,
+        arg_dim: int,
+        value_dim: int,
+    ) -> None:
+        super().__init__(f"expected {arg_dim} dimensions, not {value_dim}")
+
+
 class TypeNotFoundError(PGVectoRsError):
     def __init__(self, vtype: str) -> None:
         super().__init__(f"{vtype} type not found in the database")
+
+
+class IndexOptionTypeError(PGVectoRsError):
+    def __init__(self, required_type: type, dtype: type) -> None:
+        super().__init__(
+            f"the index requires IndexOption of {required_type} type, but got {dtype}"
+        )

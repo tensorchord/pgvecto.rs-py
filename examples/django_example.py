@@ -8,7 +8,7 @@ from django.db.migrations.loader import MigrationLoader
 from scipy.sparse import coo_array
 
 from pgvecto_rs.django import (
-    Index,
+    HnswIndex,
     L2Distance,
     SparseVectorField,
     VectorExtension,
@@ -43,12 +43,11 @@ class Documents(models.Model):
     class Meta:
         app_label = "dense"
         indexes = (
-            Index(
+            HnswIndex(
                 name="embedding_idx",
                 fields=["embedding"],
-                option=IndexOption(index=Hnsw(), threads=1),
                 opclasses=["vector_l2_ops"],
-            ),
+            ).with_option(IndexOption(index=Hnsw(), threads=1)),
         )
 
 
@@ -83,12 +82,11 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="documents",
-            index=Index(
+            index=HnswIndex(
                 name="embedding_idx",
                 fields=["embedding"],
-                option=IndexOption(index=Hnsw(), threads=1),
                 opclasses=["vector_l2_ops"],
-            ),
+            ).with_option(IndexOption(index=Hnsw(), threads=1)),
         ),
     )
 
@@ -137,12 +135,11 @@ class Documents(models.Model):
     class Meta:
         app_label = "sparse"
         indexes = (
-            Index(
+            HnswIndex(
                 name="embedding_idx",
                 fields=["embedding"],
-                option=IndexOption(index=Hnsw(), threads=1),
                 opclasses=["svector_l2_ops"],
-            ),
+            ).with_option(IndexOption(index=Hnsw(), threads=1)),
         )
 
 
@@ -177,12 +174,11 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="documents",
-            index=Index(
+            index=HnswIndex(
                 name="embedding_idx",
                 fields=["embedding"],
-                option=IndexOption(index=Hnsw(), threads=1),
                 opclasses=["svector_l2_ops"],
-            ),
+            ).with_option(IndexOption(index=Hnsw(), threads=1)),
         ),
     )
 
@@ -204,8 +200,8 @@ with connection.cursor() as cursor:
         text="hello postgres",
         embedding=SparseVector(
             coo_array(
-                (np.array([2.0, 3.0]), (np.array([0, 0]), np.array([1, 2]))),
-                shape=(1, 60),
+                (np.array([2.0, 3.0]), np.array([[1, 2]])),
+                shape=(60,),
             )
         ),
     ).save()

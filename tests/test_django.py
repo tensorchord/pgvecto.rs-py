@@ -9,8 +9,9 @@ from django.forms import ModelForm
 from pgvecto_rs.django import (
     BinaryVectorField,
     CosineDistance,
+    FlatIndex,
     Float16VectorField,
-    Index,
+    HnswIndex,
     JaccardDistance,
     L2Distance,
     MaxInnerProduct,
@@ -18,7 +19,7 @@ from pgvecto_rs.django import (
     VectorExtension,
     VectorField,
 )
-from pgvecto_rs.types import BinaryVector, Flat, Hnsw, IndexOption
+from pgvecto_rs.types import BinaryVector, Flat, IndexOption
 from tests import (
     BINARY_VECTORS,
     COSINE_DIS_OP,
@@ -48,22 +49,21 @@ class Item(models.Model):
     class Meta:
         app_label = "django_app"
         indexes = (
-            Index(
+            FlatIndex(
                 name="emb_idx_1",
                 fields=["embedding"],
+                opclasses=["vector_l2_ops"],
+            ).with_option(
                 option=IndexOption(
                     index=Flat(),
                     threads=1,
-                ),
-                opclasses=["vector_l2_ops"],
+                )
             ),
-            Index(
+            HnswIndex(
                 name="emb_idx_2",
                 fields=["embedding"],
-                option=IndexOption(
-                    index=Hnsw(m=16, ef_construction=100),
-                    threads=1,
-                ),
+                m=16,
+                ef_construction=100,
                 opclasses=["vector_l2_ops"],
             ),
         )
@@ -108,25 +108,24 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="item",
-            index=Index(
+            index=FlatIndex(
                 name="emb_idx_1",
                 fields=["embedding"],
+                opclasses=["vector_l2_ops"],
+            ).with_option(
                 option=IndexOption(
                     index=Flat(),
                     threads=1,
-                ),
-                opclasses=["vector_l2_ops"],
+                )
             ),
         ),
         migrations.AddIndex(
             model_name="item",
-            index=Index(
+            index=HnswIndex(
                 name="emb_idx_2",
                 fields=["embedding"],
-                option=IndexOption(
-                    index=Hnsw(m=16, ef_construction=100),
-                    threads=1,
-                ),
+                m=16,
+                ef_construction=100,
                 opclasses=["vector_l2_ops"],
             ),
         ),

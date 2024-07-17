@@ -3,25 +3,7 @@ from struct import pack, unpack
 
 import numpy as np
 
-from pgvecto_rs.errors import NDArrayDimensionError
-
-
-def packbits_u64(arr: np.ndarray):
-    packed_size = math.ceil(len(arr) / 64)
-    packed_arr = np.zeros(packed_size, dtype=np.uint64)
-    for i, x in enumerate(arr):
-        if x:
-            # |= is forbidden for uint64: https://github.com/numpy/numpy/issues/22624
-            packed_arr[i // 64] += 1 << (i % 64)
-    return packed_arr
-
-
-def unpackbits_u64(dim: int, packed_arr: np.ndarray):
-    unpacked_arr = np.zeros(dim, dtype=bool)
-    for i, x in enumerate(packed_arr):
-        for j in range(64):
-            unpacked_arr[i * 64 + j] = (x >> j) & 1
-    return unpacked_arr
+from pgvecto_rs.errors import NDArrayDimensionError, ToDBDimUnequalError
 
 
 class BinaryVector:
@@ -52,7 +34,10 @@ class BinaryVector:
     def to_binary(self):
         # pack to little-endian uint16, keep same endian with pgvecto.rs
         dims: bytes = pack("<H", self._value.shape[0])
-        data = packbits_u64(self._value).astype(dtype="<u8")
+        pad_width = (64 - self._value.shape[0] % 64) % 64
+        padded = np.pad(self._value, (0, pad_width), "constant")
+        data = np.packbits(padded, bitorder="little").view(np.uint64)
+
         return dims + data.tobytes()
 
     @classmethod
@@ -61,11 +46,11 @@ class BinaryVector:
 
     @classmethod
     def from_binary(cls, value):
-        dim = unpack("<H", value[:2])[0]
-        data = np.frombuffer(value, dtype="<u8", count=dim // 64, offset=2)
-
         # start reading buffer from 3th byte (first 2 bytes are for dimension info)
-        return cls(unpackbits_u64(dim, data))
+        dim = unpack("<H", value[:2])[0]
+        length = math.ceil(dim / 64)
+        data = np.frombuffer(value, dtype="<u8", count=length, offset=2).view(np.uint8)
+        return cls(np.unpackbits(data, bitorder="little", count=dim))
 
     @classmethod
     def _to_db(cls, value, dim=None):
@@ -76,9 +61,7 @@ class BinaryVector:
             value = cls(value)
 
         if dim is not None and value.dimensions() != dim:
-            raise ValueError(
-                "expected %d dimensions, not %d" % (dim, value.dimensions())
-            )
+            raise ToDBDimUnequalError(dim, value.dimensions())
 
         return value.to_text()
 

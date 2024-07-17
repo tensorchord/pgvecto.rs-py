@@ -37,9 +37,12 @@ with psycopg.connect(URL) as conn:
             np.array([1, 3, 4]),
         ]
 
-        with conn.cursor() as cursor, cursor.copy(
-            "COPY documents (embedding) FROM STDIN (FORMAT BINARY)"
-        ) as copy:
+        with (
+            conn.cursor() as cursor,
+            cursor.copy(
+                "COPY documents (embedding) FROM STDIN (FORMAT BINARY)"
+            ) as copy,
+        ):
             # write row by row
             for e in embeddings:
                 copy.write_row([e])
@@ -61,11 +64,11 @@ with psycopg.connect(URL) as conn:
         for row in cur.fetchall():
             print(row[0], ": ", row[1])
 
-        # output will be:
-        # 1 :  [1.0, 2.0, 3.0]
-        # 2 :  [1.0, 2.0, 4.0]
-        # 3 :  [1.0, 3.0, 4.0]
-        # 4 :  [1.0, 3.0, 5.0]
+        # The output will be:
+        # 1 :  [1. 2. 3.]
+        # 2 :  [1. 2. 4.]
+        # 3 :  [1. 3. 4.]
+        # 4 :  [1. 3. 5.]
     finally:
         # Drop the table
         conn.execute("DROP TABLE IF EXISTS documents;")
@@ -86,19 +89,19 @@ with psycopg.connect(URL) as conn:
     )
     conn.commit()
     try:
-        with conn.cursor() as cursor, cursor.copy(
-            "COPY documents (embedding) FROM STDIN (FORMAT BINARY)"
-        ) as copy:
+        with (
+            conn.cursor() as cursor,
+            cursor.copy(
+                "COPY documents (embedding) FROM STDIN (FORMAT BINARY)"
+            ) as copy,
+        ):
             copy.write_row([SparseVector({0: 2, 1: 4, 2: 6}, 60)])
             copy.write_row(
                 [
                     SparseVector(
                         coo_array(
-                            (
-                                np.array([2.0, 3.0]),
-                                (np.array([0, 0]), np.array([1, 2])),
-                            ),
-                            shape=(1, 60),
+                            (np.array([2.0, 3.0]), np.array([[1, 2]])),
+                            shape=(60,),
                         )
                     )
                 ]
@@ -122,7 +125,7 @@ with psycopg.connect(URL) as conn:
         for row in cur.fetchall():
             print(row[0], ": ", row[1])
 
-        # output will be:
+        # The output will be:
         # 1 :  SparseVector({0: 2.0, 1: 4.0, 2: 6.0}, 60)
         # 2 :  SparseVector({1: 2.0, 2: 3.0}, 60)
         # 3 :  SparseVector({0: 1.0, 2: 3.0}, 60)

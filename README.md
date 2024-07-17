@@ -7,7 +7,7 @@
 <a href="https://pypi.org/project/pgvecto_rs/"><img src="https://img.shields.io/pypi/dm/pgvecto_rs.svg?label=Pypi%20downloads" alt="trackgit-views" /></a>
 </p>
 
-[PGVecto.rs](https://github.com/tensorchord/pgvecto.rs) support for Python, supports Django, SQLAlchemy and Psycopg 3.
+[PGVecto.rs](https://github.com/tensorchord/pgvecto.rs) Python library, supports Django, SQLAlchemy, and Psycopg 3.
 
 |                                                        | [Vector](https://docs.pgvecto.rs/usage/indexing.html) | [Sparse Vector](https://docs.pgvecto.rs/reference/vector-types/svector.html) | [Half-Precision Vector](https://docs.pgvecto.rs/reference/vector-types/vecf16.html) | [Binary Vector](https://docs.pgvecto.rs/reference/vector-types/bvector.html) | [8-Bit Integer Vector](https://docs.pgvecto.rs/reference/vector-types/veci8.html) |
 | ------------------------------------------------------ | ----------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
@@ -263,30 +263,30 @@ Item(embedding=[1, 2, 3]).save()
 
 Add an approximate index
 ```python
-from pgvecto_rs.django import Index
-from pgvecto_rs.types import IndexOption, Hnsw, Ivf
+from django.db import models
+from pgvecto_rs.django import HnswIndex, IvfIndex
+from pgvecto_rs.types import IndexOption, Hnsw
+
 
 class Item(models.Model):
     class Meta:
         indexes = [
-            Index(
+            HnswIndex(
                 name="emb_idx_1",
                 fields=["embedding"],
-                option=IndexOption(
-                    index=Hnsw(m=16, ef_construction=100),
-                    threads=4,
-                ),
                 opclasses=["vector_l2_ops"],
+                # don't pass any of `m`, `ef_construction`, `threads`, `quantization_type` or `quantization_ratio`
+                # if created by `with_option`, they will be overwritten
+            ).with_option(
+                IndexOption(index=Hnsw(m=16, ef_construction=100), threads=1)
             ),
             # or
-            Index(
+            IvfIndex(
                 name="emb_idx_2",
                 fields=["embedding"],
-                option=IndexOption(
-                    index=Ivf(nlist=100)
-                ),
+                nlist=3,
                 opclasses=["vector_l2_ops"],
-            )
+            ),
         ]
 ```
 

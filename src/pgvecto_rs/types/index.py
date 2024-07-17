@@ -1,15 +1,16 @@
-import os
 from typing import Any, Literal, Optional, Union
 
 import toml
 
+QuantizationType = Literal["trivial", "scalar", "product"]
+QuantizationRatio = Literal["x4", "x8", "x16", "x32", "x64"]
+
 
 class Quantization:
-    QuantizationType = Literal["trivial", "scalar", "product"]
-    QuantizationRatio = Optional[Literal["x4", "x8", "x16", "x32", "x64"]]
-
     def __init__(
-        self, typ: QuantizationType = "trivial", ratio: QuantizationRatio = None
+        self,
+        typ: QuantizationType = "trivial",
+        ratio: Optional[QuantizationRatio] = None,
     ) -> None:
         self.type = typ
         self.ratio = ratio
@@ -79,13 +80,13 @@ class IndexOption:
         threads: Optional[int] = None,
     ):
         self.index = index
-        self.threads = threads or os.cpu_count() or 1
+        self.threads = threads
 
     def dump(self) -> dict:
-        return {
-            "indexing": self.index.dump(),
-            "optimizing": {"optimizing_threads": self.threads},
-        }
+        child: dict[str, Any] = {"indexing": self.index.dump()}
+        if self.threads is not None:
+            child["optimizing"] = {"optimizing_threads": self.threads}
+        return child
 
     def dumps(self) -> str:
         return toml.dumps(self.dump())

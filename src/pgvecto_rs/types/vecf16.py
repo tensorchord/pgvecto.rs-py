@@ -2,7 +2,7 @@ from struct import pack, unpack
 
 import numpy as np
 
-from pgvecto_rs.errors import NDArrayDimensionError
+from pgvecto_rs.errors import NDArrayDimensionError, ToDBDimUnequalError
 
 
 class Float16Vector:
@@ -57,9 +57,7 @@ class Float16Vector:
             value = cls(value)
 
         if dim is not None and value.dimensions() != dim:
-            raise ValueError(
-                "expected %d dimensions, not %d" % (dim, value.dimensions())
-            )
+            raise ToDBDimUnequalError(dim, value.dimensions())
 
         return value.to_text()
 

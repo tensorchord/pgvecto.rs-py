@@ -127,8 +127,8 @@ with Session(engine) as session:
         text="hello postgres",
         embedding=SparseVector(
             coo_array(
-                (np.array([2.0, 3.0]), (np.array([0, 0]), np.array([1, 2]))),
-                shape=(1, 60),
+                (np.array([2.0, 3.0]), np.array([[1, 2]])),
+                shape=(60,),
             )
         ),
     )

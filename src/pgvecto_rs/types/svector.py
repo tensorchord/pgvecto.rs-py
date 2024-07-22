@@ -1,3 +1,6 @@
+# TODO: remove after Python < 3.9 is no longer used
+from __future__ import annotations
+
 from struct import pack, unpack
 from typing import Union
 
@@ -123,9 +126,12 @@ class SparseVector:
         else:
             raise SparseShapeError(value.shape)
 
-        if hasattr(value, "coords"):
+        if hasattr(value, "coords") and value.ndim == 1:
             # scipy > 1.13
             self._indices = value.coords[0].tolist()
+        elif hasattr(value, "coords") and value.ndim == 2:  # noqa: PLR2004
+            # scipy > 1.13
+            self._indices = value.coords[1].tolist()
         else:
             self._indices = value.col.tolist()
         self._values = value.data.tolist()

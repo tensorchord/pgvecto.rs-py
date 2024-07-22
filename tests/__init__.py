@@ -1,6 +1,7 @@
 import os
 
 import numpy as np
+import scipy
 from scipy.sparse import coo_array
 
 from pgvecto_rs.types import (
@@ -36,6 +37,28 @@ DATABASES = {
 }
 # ==== test_type_equal ====
 
+COO_COMPACT_1 = (
+    coo_array(
+        (
+            np.array(
+                [2, 4, 6],
+            ),
+            np.array([[1, 3, 5]]),
+        ),
+        shape=(6,),
+    )
+    if scipy.__version__ >= "1.13"
+    else coo_array(
+        (
+            np.array(
+                [2, 4, 6],
+            ),
+            (np.array([0, 0, 0]), np.array([1, 3, 5])),
+        ),
+        shape=(1, 6),
+    )
+)
+
 EQUAL_SPARSE_VECTORS = [
     SparseVector({1: 2, 3: 4, 5: 6}, 6),
     SparseVector(
@@ -44,11 +67,12 @@ EQUAL_SPARSE_VECTORS = [
                 np.array(
                     [2, 4, 6],
                 ),
-                np.array([[1, 3, 5]]),
+                (np.array([0, 0, 0]), np.array([1, 3, 5])),
             ),
-            shape=(6,),
+            shape=(1, 6),
         )
     ),
+    SparseVector(COO_COMPACT_1),
     SparseVector.from_parts(6, [1, 3, 5], [2, 4, 6]),
 ]
 
@@ -124,11 +148,20 @@ VECTORS = [
     [0.0, -45, 2.34],
     np.ones(shape=(3)),
 ]
+
+COO_COMPACT_2 = (
+    coo_array((np.array([2.0, 3.0]), np.array([[1, 2]])), shape=(3,))
+    if scipy.__version__ >= "1.13"
+    else coo_array(
+        (np.array([2.0, 3.0]), (np.array([0, 0]), np.array([1, 2]))), shape=(1, 3)
+    )
+)
+
 SPARSE_VECTORS = [
     SparseVector({0: 2, 1: 4, 2: 6}, 3),
     SparseVector.from_parts(3, [0, 2], [1.0, 3.0]),
     SparseVector({0: 1.0, 1: 2.0, 2: 3.0}, 3),
-    SparseVector(coo_array((np.array([2.0, 3.0]), np.array([[1, 2]])), shape=(3,))),
+    SparseVector(COO_COMPACT_2),
 ]
 FLOAT16_VECTORS = [
     Float16Vector([1, 2, 3]),

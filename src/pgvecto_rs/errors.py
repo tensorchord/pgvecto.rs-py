@@ -26,7 +26,7 @@ class SparseMissingArgError(PGVectoRsError):
 
 class SparseShapeError(PGVectoRsError):
     def __init__(self, shape: Tuple[int, int]) -> None:
-        super().__init__(f"sparse array must be (n,) for vector, got {shape}")
+        super().__init__(f"sparse array must be (n,) or (1, n) for vector, got {shape}")
 
 
 class VectorDimensionError(PGVectoRsError):

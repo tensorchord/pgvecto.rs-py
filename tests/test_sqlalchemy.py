@@ -103,7 +103,7 @@ def test_create_index(session: Session, index_name: str, index_option: str):
 
 
 @pytest.mark.parametrize(("i", "e"), enumerate(INVALID_VECTORS))
-def test_invalid_insert(session: Session, i: int, e: np.ndarray):
+def test_invalid_insert(session: Session, i: int, e: np.array):
     try:
         session.execute(insert(Document).values(id=i, embedding=e))
     except StatementError:

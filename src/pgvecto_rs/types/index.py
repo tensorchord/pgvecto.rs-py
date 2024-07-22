@@ -1,3 +1,6 @@
+# TODO: remove after Python < 3.9 is no longer used
+from __future__ import annotations
+
 from typing import Any, Literal, Optional, Union
 
 import toml

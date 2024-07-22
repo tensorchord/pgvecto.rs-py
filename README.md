@@ -9,11 +9,11 @@
 
 [PGVecto.rs](https://github.com/tensorchord/pgvecto.rs) Python library, supports Django, SQLAlchemy, and Psycopg 3.
 
-|                                                        | [Vector](https://docs.pgvecto.rs/usage/indexing.html) | [Sparse Vector](https://docs.pgvecto.rs/reference/vector-types/svector.html) | [Half-Precision Vector](https://docs.pgvecto.rs/reference/vector-types/vecf16.html) | [Binary Vector](https://docs.pgvecto.rs/reference/vector-types/bvector.html) | [8-Bit Integer Vector](https://docs.pgvecto.rs/reference/vector-types/veci8.html) |
-| ------------------------------------------------------ | ----------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
-| [SQLAlchemy](https://github.com/sqlalchemy/sqlalchemy) | ✅Insert                                               | ✅Insert                                                      | ✅Insert                                                      | ✅Insert                                                      | 🔜Planned                                                     |
-| [Psycopg3](https://github.com/psycopg/psycopg)        | ✅Insert ✅Copy                                         | ✅Insert ✅Copy                                                | ✅Insert ✅Copy                                                | ✅Insert ✅Copy                                                | 🔜Planned                                                     |
-| [Django](https://github.com/django/django)             | ✅Insert                                               | ✅Insert                                                      | ✅Insert                                                      | ✅Insert                                                      | 🔜Planned                                                     |
+|                                                        | [Vector](https://docs.pgvecto.rs/usage/indexing.html) | [Sparse Vector](https://docs.pgvecto.rs/reference/vector-types/svector.html) | [Half-Precision Vector](https://docs.pgvecto.rs/reference/vector-types/vecf16.html) | [Binary Vector](https://docs.pgvecto.rs/reference/vector-types/bvector.html) |
+| ------------------------------------------------------ | ----------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| [SQLAlchemy](https://github.com/sqlalchemy/sqlalchemy) | ✅Insert                                               | ✅Insert                                                      | ✅Insert                                                      | ✅Insert                                                      |
+| [Psycopg3](https://github.com/psycopg/psycopg)         | ✅Insert ✅Copy                                         | ✅Insert ✅Copy                                                | ✅Insert ✅Copy                                                | ✅Insert ✅Copy                                                |
+| [Django](https://github.com/django/django)             | ✅Insert                                               | ✅Insert                                                      | ✅Insert                                                      | ✅Insert                                                      |
 
 ## Usage
 
@@ -97,6 +97,7 @@ session.commit()
 
 Add an approximate index
 ```python
+from sqlalchemy import Index
 from pgvecto_rs.types import IndexOption, Hnsw, Ivf
 
 index = Index(
@@ -375,7 +376,9 @@ pdm use # select the venv inside the project path
 pdm sync -d -G :all --no-isolation
 
 # lock requirement
-pdm lock -d -G :all
+# need pdm >=2.17: https://pdm-project.org/latest/usage/lock-targets/#separate-lock-files-or-merge-into-one
+pdm lock -d -G :all --python=">=3.9"
+pdm lock -d -G :all --python="<3.9" --append
 # install package to local
 # `--no-isolation` is required for scipy
 pdm install -d --no-isolation

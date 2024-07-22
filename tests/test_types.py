@@ -1,3 +1,6 @@
+# TODO: remove after Python < 3.9 is no longer used
+from __future__ import annotations
+
 import pytest
 
 from pgvecto_rs.types import IndexOption, SparseVector, Vector

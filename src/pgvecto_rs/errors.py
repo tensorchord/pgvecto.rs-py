@@ -67,3 +67,8 @@ class IndexOptionTypeError(PGVectoRsError):
         super().__init__(
             f"the index requires IndexOption of {required_type} type, but got {dtype}"
         )
+
+
+class TextParseError(PGVectoRsError):
+    def __init__(self, payload: str, dtype: type) -> None:
+        super().__init__(f"failed to parse text of '{payload}' as a {dtype}")

@@ -81,6 +81,14 @@ class HnswIndex(IndexBase):
         return [f"options = $${option.dumps()}$$"]
 
     def with_option(self, option: IndexOption):
+        """
+        Fill a partially initialized HnswIndex object with option, override arguments:
+        - m
+        - ef_construction
+        - threads
+        - quantization_type
+        - quantization_ratio
+        """
         if not isinstance(option.index, Hnsw):
             raise IndexOptionTypeError(Hnsw, type(option.index))
         self.m = option.index.m
@@ -126,6 +134,13 @@ class IvfIndex(IndexBase):
         return [f"options = $${option.dumps()}$$"]
 
     def with_option(self, option: IndexOption):
+        """
+        Fill a partially initialized IvfIndex object with option, override arguments:
+        - nlist
+        - threads
+        - quantization_type
+        - quantization_ratio
+        """
         if not isinstance(option.index, Ivf):
             raise IndexOptionTypeError(Ivf, type(option.index))
         self.nlist = option.index.nlist
@@ -167,6 +182,12 @@ class FlatIndex(IndexBase):
         return [f"options = $${option.dumps()}$$"]
 
     def with_option(self, option: IndexOption):
+        """
+        Fill a partially initialized FlatIndex object with option, override arguments:
+        - threads
+        - quantization_type
+        - quantization_ratio
+        """
         if not isinstance(option.index, Flat):
             raise IndexOptionTypeError(Flat, type(option.index))
         super().with_option(option)

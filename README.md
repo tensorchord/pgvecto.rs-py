@@ -277,7 +277,7 @@ class Item(models.Model):
                 fields=["embedding"],
                 opclasses=["vector_l2_ops"],
                 # don't pass any of `m`, `ef_construction`, `threads`, `quantization_type` or `quantization_ratio`
-                # if created by `with_option`, they will be overwritten
+                # if created by `with_option`, they will be overridden
             ).with_option(
                 IndexOption(index=Hnsw(m=16, ef_construction=100), threads=1)
             ),

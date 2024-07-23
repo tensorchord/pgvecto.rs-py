@@ -3,7 +3,7 @@ from struct import pack, unpack
 
 import numpy as np
 
-from pgvecto_rs.errors import NDArrayDimensionError, ToDBDimUnequalError
+from pgvecto_rs.errors import NDArrayDimensionError, TextParseError, ToDBDimUnequalError
 
 
 class BinaryVector:
@@ -42,14 +42,18 @@ class BinaryVector:
 
     @classmethod
     def from_text(cls, value):
-        return cls([int(v) for v in value[1:-1].split(",")])
+        left, right = value.find("["), value.rfind("]")
+        if left == -1 or right == -1 or left > right:
+            raise TextParseError(value, cls)
+        return cls([int(v) for v in value[left + 1 : right].split(",")])
 
     @classmethod
     def from_binary(cls, value):
+        view = memoryview(value)
         # start reading buffer from 3th byte (first 2 bytes are for dimension info)
-        dim = unpack("<H", value[:2])[0]
+        dim = unpack("<H", view[:2])[0]
         length = math.ceil(dim / 64)
-        data = np.frombuffer(value, dtype="<u8", count=length, offset=2).view(np.uint8)
+        data = np.frombuffer(view, dtype="<u8", count=length, offset=2).view(np.uint8)
         return cls(np.unpackbits(data, bitorder="little", count=dim))
 
     @classmethod

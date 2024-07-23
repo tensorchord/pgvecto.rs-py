@@ -11,6 +11,7 @@ from pgvecto_rs.errors import (
     SparseExtraArgError,
     SparseMissingArgError,
     SparseShapeError,
+    TextParseError,
     ToDBDimUnequalError,
 )
 
@@ -142,11 +143,14 @@ class SparseVector:
         self._values = [float(value[i]) for i in self._indices]
 
     @classmethod
-    def from_text(cls, value):
+    def from_text(cls, value: str):
         elements, dim = value.split("/", 2)
+        left, right = elements.find("{"), elements.rfind("}")
+        if left == -1 or right == -1 or left > right:
+            raise TextParseError(value, cls)
         indices = []
         values = []
-        for e in elements[1:-1].split(","):
+        for e in elements[left + 1 : right].split(","):
             i, v = e.split(":", 2)
             indices.append(int(i))
             values.append(float(v))
@@ -154,18 +158,18 @@ class SparseVector:
 
     @classmethod
     def from_binary(cls, value):
+        view = memoryview(value)
         # unpack dims and length as little-endian uint32, keep same endian with pgvecto.rs
-        dims = unpack("<I", value[:4])[0]
-        length = unpack("<I", value[4:8])[0]
-        bytes = value[8:]
+        dims = unpack("<I", view[:4])[0]
+        length = unpack("<I", view[4:8])[0]
+        bytes = view[8:]
         # unpack indices and values as little-endian uint32 and float32, keep same endian with pgvecto.rs
         indices = np.frombuffer(bytes, dtype="<I", count=length, offset=0).astype(
             np.uint32
         )
-        bytes = bytes[4 * length :]
-        values = np.frombuffer(bytes, dtype="<f", count=length, offset=0).astype(
-            np.float32
-        )
+        values = np.frombuffer(
+            bytes, dtype="<f", count=length, offset=4 * length
+        ).astype(np.float32)
         return cls.from_parts(dims, indices, values)
 
     @classmethod

@@ -38,14 +38,18 @@ class Vector:
 
     @classmethod
     def from_text(cls, value):
-        return cls([float(v) for v in value[1:-1].split(",")])
+        left, right = value.find("["), value.rfind("]")
+        if left == -1 or right == -1 or left > right:
+            raise ValueError
+        return cls([float(v) for v in value[left + 1 : right].split(",")])
 
     @classmethod
     def from_binary(cls, value):
-        dim = unpack("<H", value[:2])[0]
+        view = memoryview(value)
+        dim = unpack("<H", view[:2])[0]
         # start reading buffer from 3th byte (first 2 bytes are for dimension info)
         return cls(
-            np.frombuffer(value, dtype="<f", count=dim, offset=2).astype(np.float32)
+            np.frombuffer(view, dtype="<f", count=dim, offset=2).astype(np.float32)
         )
 
     @classmethod

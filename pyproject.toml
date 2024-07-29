@@ -1,10 +1,11 @@
 [project]
 name = "pgvecto-rs"
-version = "0.2.0"
+version = "0.2.1"
 description = "Python binding for pgvecto.rs"
 authors = [
     { name = "TensorChord", email = "envd-maintainers@tensorchord.ai" },
     { name = "盐粒 Yanli", email = "mail@yanli.one" },
+    { name = "cutecutecat", email = "junyuchen@tensorchord.ai" },
 ]
 dependencies = ["numpy>=1.23", "toml>=0.10"]
 requires-python = "<3.13,>=3.8"

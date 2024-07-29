@@ -5,7 +5,7 @@
 groups = ["default", "django", "lint", "psycopg3", "scipy-sparse", "sdk", "sqlalchemy", "test"]
 strategy = ["direct_minimal_versions"]
 lock_version = "4.5.0"
-content_hash = "sha256:c2d33e1f6597c0dfcd091e1dea656de975a3d588e6e7b1cfc45f784853553536"
+content_hash = "sha256:5a0e483b5aa807ca1a60b0b397d61c06a5166342bab50d92c3da95ddf89263d5"
 
 [[metadata.targets]]
 requires_python = ">=3.9,<3.13"
@@ -280,7 +280,7 @@ files = [
 
 [[package]]
 name = "importlib-metadata"
-version = "8.0.0"
+version = "8.2.0"
 requires_python = ">=3.8"
 summary = "Read metadata from Python packages"
 dependencies = [
@@ -288,8 +288,8 @@ dependencies = [
     "zipp>=0.5",
 ]
 files = [
-    {file = "importlib_metadata-8.0.0-py3-none-any.whl", hash = "sha256:15584cf2b1bf449d98ff8a6ff1abef57bf20f3ac6454f431736cd3e660921b2f"},
-    {file = "importlib_metadata-8.0.0.tar.gz", hash = "sha256:188bd24e4c346d3f0a933f275c2fec67050326a856b9a359881d7c2a697e8812"},
+    {file = "importlib_metadata-8.2.0-py3-none-any.whl", hash = "sha256:11901fa0c2f97919b288679932bb64febaeacf289d18ac84dd68cb2e74213369"},
+    {file = "importlib_metadata-8.2.0.tar.gz", hash = "sha256:72e8d4399996132204f9a16dcc751af254a48f8d1b20b9ff0f98d4a8f901e73d"},
 ]
 
 [[package]]

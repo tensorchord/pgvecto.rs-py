@@ -14,7 +14,7 @@ from pgvecto_rs.django import (
     VectorExtension,
     VectorField,
 )
-from pgvecto_rs.types import Hnsw, IndexOption, SparseVector
+from pgvecto_rs.types import SparseVector
 
 DATABASES = {
     "default": {
@@ -47,7 +47,8 @@ class Documents(models.Model):
                 name="embedding_idx",
                 fields=["embedding"],
                 opclasses=["vector_l2_ops"],
-            ).with_option(IndexOption(index=Hnsw(), threads=1)),
+                threads=1,
+            ),
         )
 
 
@@ -86,7 +87,8 @@ class Migration(migrations.Migration):
                 name="embedding_idx",
                 fields=["embedding"],
                 opclasses=["vector_l2_ops"],
-            ).with_option(IndexOption(index=Hnsw(), threads=1)),
+                threads=1,
+            ),
         ),
     )
 
@@ -112,7 +114,7 @@ with connection.cursor() as cursor:
     distance = L2Distance("embedding", target.embedding)
     docs = Documents.objects.annotate(distance=distance).order_by(distance)
     for doc in docs:
-        print((doc.text, doc.embedding, doc.distance))
+        print((doc.text, doc.embedding.to_numpy(), doc.distance))
     # The output will be:
     # ```
     # ('hello pgvecto.rs', array([1., 3., 4.], dtype=float32), 0.0)
@@ -139,7 +141,8 @@ class Documents(models.Model):
                 name="embedding_idx",
                 fields=["embedding"],
                 opclasses=["svector_l2_ops"],
-            ).with_option(IndexOption(index=Hnsw(), threads=1)),
+                threads=1,
+            ),
         )
 
 
@@ -178,7 +181,8 @@ class Migration(migrations.Migration):
                 name="embedding_idx",
                 fields=["embedding"],
                 opclasses=["svector_l2_ops"],
-            ).with_option(IndexOption(index=Hnsw(), threads=1)),
+                threads=1,
+            ),
         ),
     )
 

@@ -61,7 +61,7 @@ def test_search_filter_and_op(
     assert_func: List[Callable],
 ):
     for rec, dis in client.search(dis_oprand, dis_op, top_k=99, filter=filter):
-        expect = assert_func(dis_oprand, rec.embedding)
+        expect = assert_func(dis_oprand, rec.embedding.to_numpy())
         assert np.allclose(expect, dis, atol=1e-10)
 
 
@@ -80,5 +80,5 @@ def test_search_order_and_limit(
     assert_func: List[Callable],
 ):
     for rec, dis in client.search(dis_oprand, dis_op, top_k=4):
-        expect = assert_func(dis_oprand, rec.embedding)
+        expect = assert_func(dis_oprand, rec.embedding.to_numpy())
         assert np.allclose(expect, dis, atol=1e-10)

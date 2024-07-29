@@ -66,8 +66,8 @@ with psycopg.connect(URL) as conn:
             "SELECT text, embedding, embedding <-> %s AS distance FROM documents ORDER BY distance;",
             (target,),
         )
-        for row in cur.fetchall():
-            print(row)
+        for text, emb, dis in cur.fetchall():
+            print((text, emb.to_numpy(), dis))
         # The output will be:
         # ```
         # ('hello pgvecto.rs', array([1., 3., 4.], dtype=float32), 0.0)

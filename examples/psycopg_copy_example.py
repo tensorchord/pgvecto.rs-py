@@ -62,7 +62,7 @@ with psycopg.connect(URL) as conn:
             binary=True,
         )
         for row in cur.fetchall():
-            print(row[0], ": ", row[1])
+            print(row[0], ": ", row[1].to_numpy())
 
         # The output will be:
         # 1 :  [1. 2. 3.]

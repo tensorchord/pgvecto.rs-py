@@ -62,13 +62,6 @@ class TypeNotFoundError(PGVectoRsError):
         super().__init__(f"{vtype} type not found in the database")
 
 
-class IndexOptionTypeError(PGVectoRsError):
-    def __init__(self, required_type: type, dtype: type) -> None:
-        super().__init__(
-            f"the index requires IndexOption of {required_type} type, but got {dtype}"
-        )
-
-
 class TextParseError(PGVectoRsError):
     def __init__(self, payload: str, dtype: type) -> None:
         super().__init__(f"failed to parse text of '{payload}' as a {dtype}")

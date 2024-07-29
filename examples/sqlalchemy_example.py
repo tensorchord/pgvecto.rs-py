@@ -78,8 +78,8 @@ with Session(engine) as session:
             "distance",
         ),
     ).order_by("distance")
-    for doc in session.execute(stmt):
-        print(doc)
+    for text, emb, dis in session.execute(stmt):
+        print((text, emb.to_numpy(), dis))
 
     # The output will be:
     # ```

@@ -88,15 +88,15 @@ def test_copy(session: Connection):
     rows = cur.fetchall()
     # query dense
     assert len(rows) == len(VECTORS)
-    for i, e in enumerate(rows):
-        assert np.allclose(e, VECTORS[i], atol=1e-10)
+    for i, (e,) in enumerate(rows):
+        assert np.allclose(e.to_numpy(), VECTORS[i], atol=1e-10)
     # query sparse
     cur = session.execute("SELECT * FROM tb_test_item;", binary=True)
     rows = cur.fetchall()
     assert len(rows) == len(VECTORS)
-    assert str(rows[0][1].tolist()) == "[1.0, 2.0, 3.0]"
-    assert str(rows[1][1].tolist()) == "[7.0, 7.0, 7.0]"
-    assert str(rows[3][1].tolist()) == "[1.0, 1.0, 1.0]"
+    assert str(rows[0][1].to_list()) == "[1.0, 2.0, 3.0]"
+    assert str(rows[1][1].to_list()) == "[7.0, 7.0, 7.0]"
+    assert str(rows[3][1].to_list()) == "[1.0, 1.0, 1.0]"
     session.execute("Delete FROM tb_test_item;")
     session.commit()
 
@@ -113,7 +113,7 @@ def create_items(session: Connection):
         rows = cur.fetchall()
         assert len(rows) == len(VECTORS)
         for i, e in enumerate(rows):
-            assert np.allclose(e[1], VECTORS[i], atol=1e-10)
+            assert np.allclose(e[1].to_numpy(), VECTORS[i], atol=1e-10)
 
 
 def test_l2_distance(session: Connection):
@@ -123,7 +123,7 @@ def test_l2_distance(session: Connection):
         (L2_DIS_OP,),
     )
     for emb, dis in cur.fetchall():
-        expect = l2_distance(np.array(L2_DIS_OP), emb)
+        expect = l2_distance(np.array(L2_DIS_OP), emb.to_numpy())
         assert np.allclose(expect, dis, atol=1e-10)
 
 
@@ -134,7 +134,7 @@ def test_max_inner_product(session: Connection):
         (MAX_INNER_PROD_OP,),
     )
     for emb, dis in cur.fetchall():
-        expect = max_inner_product(np.array(MAX_INNER_PROD_OP), emb)
+        expect = max_inner_product(np.array(MAX_INNER_PROD_OP), emb.to_numpy())
         assert np.allclose(expect, dis, atol=1e-10)
 
 
@@ -144,7 +144,7 @@ def test_cosine_distance(session: Connection):
         "SELECT embedding, embedding <=> %s FROM tb_test_item;", (COSINE_DIS_OP,)
     )
     for emb, dis in cur.fetchall():
-        expect = cosine_distance(np.array(COSINE_DIS_OP), emb)
+        expect = cosine_distance(np.array(COSINE_DIS_OP), emb.to_numpy())
         assert np.allclose(expect, dis, atol=1e-10)
 
 

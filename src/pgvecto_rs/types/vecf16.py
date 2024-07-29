@@ -27,17 +27,3 @@ class Float16Vector(Vector):
         return cls(
             np.frombuffer(value, dtype="<f2", count=dim, offset=2).astype(np.float16)
         )
-
-    @classmethod
-    def _from_db(cls, value):
-        if value is None or isinstance(value, cls):
-            return value
-
-        return cls.from_text(value)
-
-    @classmethod
-    def _from_db_binary(cls, value):
-        if value is None or isinstance(value, cls):
-            return value
-
-        return cls.from_binary(value)

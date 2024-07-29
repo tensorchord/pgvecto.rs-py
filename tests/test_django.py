@@ -19,7 +19,7 @@ from pgvecto_rs.django import (
     VectorExtension,
     VectorField,
 )
-from pgvecto_rs.types import BinaryVector, Flat, IndexOption
+from pgvecto_rs.types import BinaryVector
 from tests import (
     BINARY_VECTORS,
     COSINE_DIS_OP,
@@ -53,17 +53,14 @@ class Item(models.Model):
                 name="emb_idx_1",
                 fields=["embedding"],
                 opclasses=["vector_l2_ops"],
-            ).with_option(
-                option=IndexOption(
-                    index=Flat(),
-                    threads=1,
-                )
+                threads=1,
             ),
             HnswIndex(
                 name="emb_idx_2",
                 fields=["embedding"],
                 m=16,
                 ef_construction=100,
+                threads=1,
                 opclasses=["vector_l2_ops"],
             ),
         )
@@ -112,11 +109,7 @@ class Migration(migrations.Migration):
                 name="emb_idx_1",
                 fields=["embedding"],
                 opclasses=["vector_l2_ops"],
-            ).with_option(
-                option=IndexOption(
-                    index=Flat(),
-                    threads=1,
-                )
+                threads=1,
             ),
         ),
         migrations.AddIndex(
@@ -194,7 +187,7 @@ def test_l2_distance(session: CursorWrapper):
     distance = L2Distance("embedding", L2_DIS_OP)
     items = Item.objects.annotate(distance=distance).order_by(distance)
     for item in items:
-        expect = l2_distance(np.array(L2_DIS_OP), item.embedding)
+        expect = l2_distance(np.array(L2_DIS_OP), item.embedding.to_numpy())
         assert np.allclose(expect, item.distance, atol=1e-10)
 
 
@@ -202,7 +195,9 @@ def test_max_inner_product(session: CursorWrapper):
     distance = MaxInnerProduct("embedding", MAX_INNER_PROD_OP)
     items = Item.objects.annotate(distance=distance).order_by(distance)
     for item in items:
-        expect = max_inner_product(np.array(MAX_INNER_PROD_OP), item.embedding)
+        expect = max_inner_product(
+            np.array(MAX_INNER_PROD_OP), item.embedding.to_numpy()
+        )
         assert np.allclose(expect, item.distance, atol=1e-10)
 
 
@@ -210,7 +205,7 @@ def test_cosine_distance(session: CursorWrapper):
     distance = CosineDistance("embedding", COSINE_DIS_OP)
     items = Item.objects.annotate(distance=distance).order_by(distance)
     for item in items:
-        expect = cosine_distance(np.array(COSINE_DIS_OP), item.embedding)
+        expect = cosine_distance(np.array(COSINE_DIS_OP), item.embedding.to_numpy())
         assert np.allclose(expect, item.distance, atol=1e-10)
 
 
@@ -277,7 +272,7 @@ def test_vector_form_instance(session):
     Item(id=1, embedding=[1, 2, 3]).save()
     item = Item.objects.get(pk=1)
     form = VectorForm(instance=item)
-    assert 'value="[1.0, 2.0, 3.0]"' in form.as_div()
+    assert ' value="Vector([1.0, 2.0, 3.0])"' in form.as_div()
 
 
 def test_vector_form_save(session):
@@ -287,7 +282,7 @@ def test_vector_form_save(session):
     assert form.has_changed()
     assert form.is_valid()
     assert form.save()
-    assert [4, 5, 6] == Item.objects.get(pk=1).embedding.tolist()
+    assert [4, 5, 6] == Item.objects.get(pk=1).embedding.to_numpy().tolist()
 
 
 def test_vector_form_save_missing(session):

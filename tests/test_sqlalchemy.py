@@ -81,7 +81,7 @@ def create_items(session: Session):
         session.execute(stat)
     session.commit()
     for row in session.scalars(select(Document)):
-        assert np.allclose(row.embedding, VECTORS[row.id], atol=1e-10)
+        assert np.allclose(row.embedding.to_numpy(), VECTORS[row.id], atol=1e-10)
 
 
 # =================================
@@ -129,7 +129,7 @@ def test_l2_distance(session: Session):
         ),
     ):
         (emb, dis) = row
-        expect = l2_distance(np.array(L2_DIS_OP), emb)
+        expect = l2_distance(np.array(L2_DIS_OP), emb.to_numpy())
         assert np.allclose(expect, dis, atol=1e-10)
 
 
@@ -141,7 +141,7 @@ def test_max_inner_product(session: Session):
         ),
     ):
         (emb, dis) = row
-        expect = max_inner_product(np.array(MAX_INNER_PROD_OP), emb)
+        expect = max_inner_product(np.array(MAX_INNER_PROD_OP), emb.to_numpy())
         assert np.allclose(expect, dis, atol=1e-10)
 
 
@@ -153,7 +153,7 @@ def test_cosine_distance(session: Session):
         ),
     ):
         (emb, dis) = row
-        expect = cosine_distance(np.array(COSINE_DIS_OP), emb)
+        expect = cosine_distance(np.array(COSINE_DIS_OP), emb.to_numpy())
         assert np.allclose(expect, dis, atol=1e-10)
 
 

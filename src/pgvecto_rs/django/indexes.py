@@ -2,7 +2,6 @@ from typing import Optional
 
 from django.contrib.postgres.indexes import PostgresIndex
 
-from pgvecto_rs.errors import IndexOptionTypeError
 from pgvecto_rs.types import Flat, Hnsw, IndexOption, Ivf, Quantization
 from pgvecto_rs.types.index import QuantizationRatio, QuantizationType
 
@@ -29,14 +28,6 @@ class IndexBase(PostgresIndex):
         kwargs["quantization_type"] = self.quantization_type
         kwargs["quantization_ratio"] = self.quantization_ratio
         return path, args, kwargs
-
-    def with_option(self, option: IndexOption):
-        self.threads = option.threads
-        quantization = option.index.quantization
-
-        self.quantization_type = quantization.type if quantization else None
-        self.quantization_ratio = quantization.ratio if quantization else None
-        return self
 
 
 class HnswIndex(IndexBase):
@@ -80,22 +71,6 @@ class HnswIndex(IndexBase):
         )
         return [f"options = $${option.dumps()}$$"]
 
-    def with_option(self, option: IndexOption):
-        """
-        Fill a partially initialized HnswIndex object with option, override arguments:
-        - m
-        - ef_construction
-        - threads
-        - quantization_type
-        - quantization_ratio
-        """
-        if not isinstance(option.index, Hnsw):
-            raise IndexOptionTypeError(Hnsw, type(option.index))
-        self.m = option.index.m
-        self.ef_construction = option.index.ef_construction
-        super().with_option(option)
-        return self
-
 
 class IvfIndex(IndexBase):
     def __init__(
@@ -133,20 +108,6 @@ class IvfIndex(IndexBase):
         )
         return [f"options = $${option.dumps()}$$"]
 
-    def with_option(self, option: IndexOption):
-        """
-        Fill a partially initialized IvfIndex object with option, override arguments:
-        - nlist
-        - threads
-        - quantization_type
-        - quantization_ratio
-        """
-        if not isinstance(option.index, Ivf):
-            raise IndexOptionTypeError(Ivf, type(option.index))
-        self.nlist = option.index.nlist
-        super().with_option(option)
-        return self
-
 
 class FlatIndex(IndexBase):
     def __init__(
@@ -180,15 +141,3 @@ class FlatIndex(IndexBase):
             threads=self.threads,
         )
         return [f"options = $${option.dumps()}$$"]
-
-    def with_option(self, option: IndexOption):
-        """
-        Fill a partially initialized FlatIndex object with option, override arguments:
-        - threads
-        - quantization_type
-        - quantization_ratio
-        """
-        if not isinstance(option.index, Flat):
-            raise IndexOptionTypeError(Flat, type(option.index))
-        super().with_option(option)
-        return self

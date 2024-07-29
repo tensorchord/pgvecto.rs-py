@@ -1,18 +1,18 @@
-from typing import List
+from typing import Callable, List
 
 import numpy as np
 import pytest
 
 from pgvecto_rs.sdk import Filter, PGVectoRs, Record, filters
 from tests import (
-    EXPECTED_NEG_COS_DIS,
-    EXPECTED_NEG_DOT_PROD_DIS,
-    EXPECTED_SQRT_EUCLID_DIS,
-    OP_NEG_COS_DIS,
-    OP_NEG_DOT_PROD_DIS,
-    OP_SQRT_EUCLID_DIS,
+    COSINE_DIS_OP,
+    L2_DIS_OP,
+    MAX_INNER_PROD_OP,
     URL,
     VECTORS,
+    cosine_distance,
+    l2_distance,
+    max_inner_product,
 )
 
 URL = URL.replace("postgresql", "postgresql+psycopg")
@@ -46,11 +46,11 @@ filter_src2: Filter = lambda r: r.meta.contains({"src": "src2"})
 
 @pytest.mark.parametrize("filter", [filter_src1, filter_src2])
 @pytest.mark.parametrize(
-    ("dis_op", "dis_oprand", "dis_expected"),
+    ("dis_op", "dis_oprand", "assert_func"),
     zip(
         ["<->", "<#>", "<=>"],
-        [OP_SQRT_EUCLID_DIS, OP_NEG_DOT_PROD_DIS, OP_NEG_COS_DIS],
-        [EXPECTED_SQRT_EUCLID_DIS, EXPECTED_NEG_DOT_PROD_DIS, EXPECTED_NEG_COS_DIS],
+        [L2_DIS_OP, MAX_INNER_PROD_OP, COSINE_DIS_OP],
+        [l2_distance, max_inner_product, cosine_distance],
     ),
 )
 def test_search_filter_and_op(
@@ -58,32 +58,27 @@ def test_search_filter_and_op(
     filter: Filter,
     dis_op: str,
     dis_oprand: List[float],
-    dis_expected: List[float],
+    assert_func: List[Callable],
 ):
     for rec, dis in client.search(dis_oprand, dis_op, top_k=99, filter=filter):
-        cnt = None
-        for i in range(len(VECTORS)):
-            if np.allclose(rec.embedding, VECTORS[i]):
-                cnt = i
-                break
-        assert np.allclose(dis, dis_expected[cnt])
+        expect = assert_func(dis_oprand, rec.embedding.to_numpy())
+        assert np.allclose(expect, dis, atol=1e-10)
 
 
 @pytest.mark.parametrize(
-    ("dis_op", "dis_oprand", "dis_expected"),
+    ("dis_op", "dis_oprand", "assert_func"),
     zip(
         ["<->", "<#>", "<=>"],
-        [OP_SQRT_EUCLID_DIS, OP_NEG_DOT_PROD_DIS, OP_NEG_COS_DIS],
-        [EXPECTED_SQRT_EUCLID_DIS, EXPECTED_NEG_DOT_PROD_DIS, EXPECTED_NEG_COS_DIS],
+        [L2_DIS_OP, MAX_INNER_PROD_OP, COSINE_DIS_OP],
+        [l2_distance, max_inner_product, cosine_distance],
     ),
 )
 def test_search_order_and_limit(
     client: PGVectoRs,
     dis_op: str,
     dis_oprand: List[float],
-    dis_expected: List[float],
+    assert_func: List[Callable],
 ):
-    dis_expected = dis_expected.copy()
-    dis_expected.sort()
-    for i, (_rec, dis) in enumerate(client.search(dis_oprand, dis_op, top_k=4)):
-        assert np.allclose(dis, dis_expected[i // 2])
+    for rec, dis in client.search(dis_oprand, dis_op, top_k=4):
+        expect = assert_func(dis_oprand, rec.embedding.to_numpy())
+        assert np.allclose(expect, dis, atol=1e-10)

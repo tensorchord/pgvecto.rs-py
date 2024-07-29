@@ -4,19 +4,26 @@ from sqlalchemy import Index, Integer, create_engine, delete, insert, select, te
 from sqlalchemy.exc import StatementError
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 
-from pgvecto_rs.sqlalchemy import Vector
+from pgvecto_rs.sqlalchemy import BVECTOR, SVECTOR, VECF16, VECTOR
 from tests import (
-    EXPECTED_NEG_COS_DIS,
-    EXPECTED_NEG_DOT_PROD_DIS,
-    EXPECTED_SQRT_EUCLID_DIS,
+    BINARY_VECTORS,
+    COSINE_DIS_OP,
+    FILTER_VALUE,
+    FLOAT16_OP,
+    FLOAT16_VECTORS,
+    INDEX_OPTIONS,
     INVALID_VECTORS,
-    LEN_AFT_DEL,
-    OP_NEG_COS_DIS,
-    OP_NEG_DOT_PROD_DIS,
-    OP_SQRT_EUCLID_DIS,
-    TOML_SETTINGS,
+    JACCARD_DIS_OP,
+    L2_DIS_OP,
+    MAX_INNER_PROD_OP,
+    SPARSE_OP,
+    SPARSE_VECTORS,
     URL,
     VECTORS,
+    cosine_distance,
+    jaccard_distance,
+    l2_distance,
+    max_inner_product,
 )
 
 
@@ -28,10 +35,10 @@ class Document(Base):
     __tablename__ = "tb_test_item"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    embedding: Mapped[np.ndarray] = mapped_column(Vector(3))
-
-    def __repr__(self) -> str:
-        return f"{self.embedding}"
+    embedding: Mapped[np.ndarray] = mapped_column(VECTOR(3))
+    sparse_embedding = mapped_column(SVECTOR(3), nullable=True)
+    float16_embedding = mapped_column(VECF16(3), nullable=True)
+    binary_embedding = mapped_column(BVECTOR(3), nullable=True)
 
 
 @pytest.fixture(scope="module")
@@ -49,6 +56,7 @@ def session():
 
     with Session(engine) as session:
         Document.metadata.create_all(engine)
+        create_items(session)
         try:
             yield session
         finally:
@@ -56,18 +64,38 @@ def session():
             Document.metadata.drop_all(engine)
 
 
+def create_items(session: Session):
+    data = [
+        insert(Document).values(
+            id=i,
+            embedding=v,
+            sparse_embedding=sv,
+            float16_embedding=f16v,
+            binary_embedding=bv,
+        )
+        for i, (v, sv, f16v, bv) in enumerate(
+            zip(VECTORS, SPARSE_VECTORS, FLOAT16_VECTORS, BINARY_VECTORS)
+        )
+    ]
+    for stat in data:
+        session.execute(stat)
+    session.commit()
+    for row in session.scalars(select(Document)):
+        assert np.allclose(row.embedding.to_numpy(), VECTORS[row.id], atol=1e-10)
+
+
 # =================================
 # Prefix functional tests
 # =================================
 
 
-@pytest.mark.parametrize(("index_name", "index_setting"), TOML_SETTINGS.items())
-def test_create_index(session: Session, index_name: str, index_setting: str):
+@pytest.mark.parametrize(("index_name", "index_option"), INDEX_OPTIONS.items())
+def test_create_index(session: Session, index_name: str, index_option: str):
     index = Index(
         index_name,
         Document.embedding,
         postgresql_using="vectors",
-        postgresql_with={"options": f"$${index_setting}$$"},
+        postgresql_with={"options": f"$${index_option}$$"},
         postgresql_ops={"embedding": "vector_l2_ops"},
     )
     index.create(session.bind)
@@ -75,7 +103,7 @@ def test_create_index(session: Session, index_name: str, index_setting: str):
 
 
 @pytest.mark.parametrize(("i", "e"), enumerate(INVALID_VECTORS))
-def test_invalid_insert(session: Session, i: int, e: np.ndarray):
+def test_invalid_insert(session: Session, i: int, e: np.array):
     try:
         session.execute(insert(Document).values(id=i, embedding=e))
     except StatementError:
@@ -89,59 +117,99 @@ def test_invalid_insert(session: Session, i: int, e: np.ndarray):
 
 
 # =================================
-# Semetic search tests
+# Semantic search tests
 # =================================
 
 
-def test_insert(session: Session):
-    for stat in [
-        insert(Document).values(id=i, embedding=e) for i, e in enumerate(VECTORS)
-    ]:
-        session.execute(stat)
-    session.commit()
-    for row in session.scalars(select(Document)):
-        assert np.allclose(row.embedding, VECTORS[row.id], atol=1e-10)
-
-
-def test_squared_euclidean_distance(session: Session):
+def test_l2_distance(session: Session):
     for row in session.execute(
         select(
-            Document.id,
-            Document.embedding.squared_euclidean_distance(OP_SQRT_EUCLID_DIS),
+            Document.embedding,
+            Document.embedding.l2_distance(L2_DIS_OP),
         ),
     ):
-        (i, res) = row
-        assert np.allclose(EXPECTED_SQRT_EUCLID_DIS[i], res, atol=1e-10)
+        (emb, dis) = row
+        expect = l2_distance(np.array(L2_DIS_OP), emb.to_numpy())
+        assert np.allclose(expect, dis, atol=1e-10)
 
 
-def test_negative_dot_product_distance(session: Session):
+def test_max_inner_product(session: Session):
     for row in session.execute(
         select(
-            Document.id,
-            Document.embedding.negative_dot_product_distance(OP_NEG_DOT_PROD_DIS),
+            Document.embedding,
+            Document.embedding.max_inner_product(MAX_INNER_PROD_OP),
         ),
     ):
-        (i, res) = row
-        assert np.allclose(EXPECTED_NEG_DOT_PROD_DIS[i], res, atol=1e-10)
+        (emb, dis) = row
+        expect = max_inner_product(np.array(MAX_INNER_PROD_OP), emb.to_numpy())
+        assert np.allclose(expect, dis, atol=1e-10)
 
 
-def test_negative_cosine_distance(session: Session):
+def test_cosine_distance(session: Session):
     for row in session.execute(
         select(
-            Document.id, Document.embedding.negative_cosine_distance(OP_NEG_COS_DIS)
+            Document.embedding,
+            Document.embedding.cosine_distance(COSINE_DIS_OP),
         ),
     ):
-        (i, res) = row
-        assert np.allclose(EXPECTED_NEG_COS_DIS[i], res, atol=1e-10)
+        (emb, dis) = row
+        expect = cosine_distance(np.array(COSINE_DIS_OP), emb.to_numpy())
+        assert np.allclose(expect, dis, atol=1e-10)
 
 
-# # =================================
-# # Suffix functional tests
-# # =================================
+def test_binary_jaccard_distance(session):
+    for row in session.execute(
+        select(
+            Document.binary_embedding,
+            Document.binary_embedding.jaccard_distance(JACCARD_DIS_OP),
+        ),
+    ):
+        (emb, dis) = row
+        expect = jaccard_distance(JACCARD_DIS_OP, emb.to_numpy())
+        assert np.allclose(expect, dis, atol=1e-10)
 
 
-def test_delete(session: Session):
+def test_float16_vector(session):
+    for row in session.execute(
+        select(
+            Document.float16_embedding,
+            Document.float16_embedding.l2_distance(FLOAT16_OP),
+        ),
+    ):
+        (emb, dis) = row
+        expect = l2_distance(FLOAT16_OP, emb.to_numpy())
+        assert np.allclose(expect, dis, atol=1e-2)
+
+
+def test_sparse_vector(session):
+    for row in session.execute(
+        select(
+            Document.sparse_embedding,
+            Document.sparse_embedding.l2_distance(SPARSE_OP),
+        ),
+    ):
+        (emb, dis) = row
+        expect = l2_distance(SPARSE_OP.to_numpy(), emb.to_numpy())
+        assert np.allclose(expect, dis, atol=1e-10)
+
+
+def test_filter(session):
+    for row in session.execute(
+        select(
+            Document.embedding.l2_distance(L2_DIS_OP),
+        ).filter(Document.embedding.l2_distance(L2_DIS_OP) < FILTER_VALUE),
+    ):
+        (dis,) = row
+        assert dis < FILTER_VALUE
+
+
+# =================================
+# Suffix functional tests
+# =================================
+
+
+def test_clean(session: Session):
     session.execute(delete(Document).where(Document.embedding == VECTORS[0]))
     session.commit()
     res = session.execute(select(Document))
-    assert len(list(res)) == LEN_AFT_DEL
+    assert len(list(res)) == len(VECTORS) - 1

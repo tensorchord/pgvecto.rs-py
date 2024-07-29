@@ -7,7 +7,7 @@ authors = [
     { name = "盐粒 Yanli", email = "mail@yanli.one" },
 ]
 dependencies = ["numpy>=1.23", "toml>=0.10"]
-requires-python = ">=3.8"
+requires-python = "<3.13,>=3.8"
 readme = "README.md"
 license = { text = "Apache-2.0" }
 classifiers = [
@@ -16,6 +16,7 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 
 [build-system]
@@ -26,9 +27,20 @@ requires = ["pdm-backend"]
 psycopg3 = ["psycopg[binary]>=3.1.12"]
 sdk = ["openai>=1.2.2", "pgvecto_rs[sqlalchemy]"]
 sqlalchemy = ["pgvecto_rs[psycopg3]", "SQLAlchemy>=2.0.23"]
+django = ["Django>=4.2"]
 [tool.pdm.dev-dependencies]
 lint = ["ruff>=0.1.5"]
 test = ["pytest>=7.4.3"]
+# scipy need --no-isolation to install, which requires these modules
+scipy-sparse = [
+    "Cython==0.29.34",
+    "setuptools>=70",
+    "wheel>=0.43",
+    "pdm-backend>=2.3.2",
+    "editables>=0.5",
+    "scipy>=1.13; python_version >= '3.9'",
+    "scipy>=1.10,<1.13; python_version == '3.8'",
+]
 
 [tool.pdm.scripts]
 test = "pytest tests/"

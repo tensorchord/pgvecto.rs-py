@@ -49,7 +49,7 @@ jobs:
   test:
     strategy:
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
 
@@ -62,7 +62,8 @@ jobs:
 
     - name: Install Dependencies
       run: |
-        pdm sync -G :all
+        sudo apt-get update && sudo apt-get install libblas-dev liblapack-dev
+        pdm sync -G :all --no-isolation
 
     - name: Install jq
       uses: dcarbone/install-jq-action@v2

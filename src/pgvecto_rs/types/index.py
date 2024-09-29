@@ -19,12 +19,12 @@ class Quantization:
         self.ratio = ratio
 
     def dump(self) -> dict:
-        if self.type == "trivial":
-            return {"quantization": {"trivial": {}}}
+        if self.type == "product":
+            return {"quantization": {"product": {"ratio": self.ratio}}}
         elif self.type == "scalar":
             return {"quantization": {"scalar": {}}}
         else:
-            return {"quantization": {"product": {"ratio": self.ratio}}}
+            return {}
 
 
 class Flat:

@@ -40,6 +40,9 @@ client = PGVectoRs(
 client.insert(records1)
 client.insert(records2)
 
+# Count rows
+client.row_count(estimate=True)
+
 # Query (With a filter from the filters module)
 print("#################### First Query ####################")
 for record, dis in client.search(

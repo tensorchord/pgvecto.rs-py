@@ -2,16 +2,52 @@ from typing import List, Literal, Optional, Tuple, Type, Union
 from uuid import UUID
 
 from numpy import ndarray
-from sqlalchemy import ColumnElement, Float, create_engine, delete, insert, select, text
+from sqlalchemy import (
+    BIGINT,
+    Column,
+    ColumnElement,
+    Float,
+    create_engine,
+    delete,
+    func,
+    insert,
+    select,
+    text,
+)
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.dialects.postgresql.pg_catalog import pg_class
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm.session import Session
 from sqlalchemy.types import String
 
+from pgvecto_rs.errors import CountRowsEstimateCondError
 from pgvecto_rs.sdk.filters import Filter
-from pgvecto_rs.sdk.record import Record, RecordORM, RecordORMType
+from pgvecto_rs.sdk.record import Record, RecordORM, RecordORMType, Unique
 from pgvecto_rs.sqlalchemy import VECTOR
+
+
+def table_factory(collection_name, dimension, table_args, base_class=RecordORM):
+    def __init__(self, **kwargs):  # noqa: N807
+        base_class.__init__(self, **kwargs)
+
+    newclass = type(
+        collection_name,
+        (base_class,),
+        {
+            "__init__": __init__,
+            "__tablename__": f"collection_{collection_name}",
+            "__table_args__": table_args,
+            "id": mapped_column(
+                postgresql.UUID(as_uuid=True),
+                primary_key=True,
+            ),
+            "text": mapped_column(String),
+            "meta": mapped_column(postgresql.JSONB),
+            "embedding": mapped_column(VECTOR(dimension)),
+        },
+    )
+    return newclass
 
 
 class PGVectoRs:
@@ -19,8 +55,13 @@ class PGVectoRs:
     _table: Type[RecordORM]
     dimension: int
 
-    def __init__(
-        self, db_url: str, collection_name: str, dimension: int, recreate: bool = False
+    def __init__(  # noqa: PLR0913
+        self,
+        db_url: str,
+        collection_name: str,
+        dimension: int,
+        recreate: bool = False,
+        constraints: Union[List[Unique], None] = None,
     ) -> None:
         """Connect to an existing table or create a new empty one.
         If the `recreate=True`, the table will be dropped if it exists.
@@ -28,29 +69,28 @@ class PGVectoRs:
         Args:
         ----
             db_url (str): url to the database.
-            table_name (str): name of the table.
+            collection_name (str): name of the collection. A prefix `collection_` is added to actual table name.
             dimension (int): dimension of the embeddings.
             recreate (bool): drop the table if it exists. Defaults to False.
+            constraints (List[Unique]): add constraints to columns, e.g. UNIQUE constraint
         """
-
-        class _Table(RecordORM):
-            __tablename__ = f"collection_{collection_name}"
-            __table_args__ = {"extend_existing": True}  # noqa: RUF012
-            id: Mapped[UUID] = mapped_column(
-                postgresql.UUID(as_uuid=True),
-                primary_key=True,
+        if constraints is None or len(constraints) == 0:
+            table_args = {"extend_existing": True}
+        else:
+            table_args = (
+                *[col.make() for col in constraints],
+                {"extend_existing": True},
             )
-            text: Mapped[str] = mapped_column(String)
-            meta: Mapped[dict] = mapped_column(postgresql.JSONB)
-            embedding: Mapped[ndarray] = mapped_column(VECTOR(dimension))
 
         self._engine = create_engine(db_url)
+        self._table = table_factory(collection_name, dimension, table_args)
         with Session(self._engine) as session:
             session.execute(text("CREATE EXTENSION IF NOT EXISTS vectors"))
             if recreate:
-                session.execute(text(f"DROP TABLE IF EXISTS {_Table.__tablename__}"))
+                session.execute(
+                    text(f"DROP TABLE IF EXISTS {self._table.__tablename__}")
+                )
             session.commit()
-        self._table = _Table
         self._table.__table__.create(self._engine, checkfirst=True)
         self.dimension = dimension
 
@@ -104,6 +144,29 @@ class PGVectoRs:
                 stmt = stmt.where(filter(self._table))
             res = session.execute(stmt)
             return [(Record.from_orm(row[0]), row[1]) for row in res]
+
+    # ================ Stat ==================
+    def row_count(self, estimate: bool = True, filter: Optional[Filter] = None) -> int:
+        if estimate and filter is not None:
+            raise CountRowsEstimateCondError()
+        if estimate:
+            stmt = (
+                select(func.cast(Column("reltuples", Float), BIGINT).label("rows"))
+                .select_from(pg_class)
+                .where(
+                    Column("oid", Float)
+                    == func.cast(self._table.__tablename__, postgresql.REGCLASS)
+                )
+            )
+            with Session(self._engine) as session:
+                result = session.execute(stmt).fetchone()
+        else:
+            stmt = select(func.count("*").label("rows")).select_from(self._table)
+            if filter is not None:
+                stmt = stmt.where(filter(self._table))
+            with Session(self._engine) as session:
+                result = session.execute(stmt).fetchone()
+        return result[0]
 
     # ================ Delete ================
     def delete(self, filter: Filter) -> None:

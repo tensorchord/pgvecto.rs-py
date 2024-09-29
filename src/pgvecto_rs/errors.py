@@ -65,3 +65,10 @@ class TypeNotFoundError(PGVectoRsError):
 class TextParseError(PGVectoRsError):
     def __init__(self, payload: str, dtype: type) -> None:
         super().__init__(f"failed to parse text of '{payload}' as a {dtype}")
+
+
+class CountRowsEstimateCondError(PGVectoRsError):
+    def __init__(self) -> None:
+        super().__init__(
+            "cannot use estimate=True and a condition for row count requests"
+        )

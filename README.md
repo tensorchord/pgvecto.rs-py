@@ -328,13 +328,13 @@ from pgvecto_rs.sdk import PGVectoRs, Record
 # Create a client
 client = PGVectoRs(
     db_url="postgresql+psycopg://postgres:mysecretpassword@localhost:5432/postgres",
-    table_name="example",
+    collection_name="example",
     dimension=3,
 )
 
 try:
     # Add some records
-    client.add_records(
+    client.insert(
         [
             Record.from_text("hello 1", [1, 2, 3]),
             Record.from_text("hello 2", [1, 2, 4]),

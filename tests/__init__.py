@@ -23,7 +23,7 @@ PASS = os.getenv("DB_PASS", "mysecretpassword")
 DB_NAME = os.getenv("DB_NAME", "postgres")
 
 # Run tests with shell:
-#   DB_HOST=localhost DB_USER=postgres DB_PASS=password DB_NAME=postgres python3 -m pytest bindings/python/tests/
+#   DB_HOST=localhost DB_USER=postgres DB_PASS=password DB_NAME=postgres python3 -m pytest tests/
 URL = f"postgresql://{USER}:{PASS}@{HOST}:{PORT}/{DB_NAME}"
 DATABASES = {
     "default": {
@@ -106,7 +106,11 @@ INDEX_OPTION_DUMPS = [
     ),
     (
         IndexOption(index=Ivf(quantization=Quantization(typ="trivial"))),
-        "[indexing.ivf.quantization.trivial]\n",
+        "[indexing.ivf]\n",
+    ),
+    (
+        IndexOption(index=Ivf()),
+        "[indexing.ivf]\n",
     ),
     (
         IndexOption(

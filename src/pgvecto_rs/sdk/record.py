@@ -1,8 +1,32 @@
+from enum import IntEnum
+from functools import reduce
 from typing import List, Optional, Type, Union
 from uuid import UUID, uuid4
 
 from numpy import array, float32, ndarray
+from sqlalchemy import UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped
+
+
+class Column(IntEnum):
+    TEXT = 1
+    META = 2
+    EMBEDDING = 4
+
+
+class Unique:
+    def __init__(self, columns: List[Column]):
+        self.value = reduce(lambda x, y: x | y, columns)
+
+    def make(self) -> UniqueConstraint:
+        ans: List[UniqueConstraint] = []
+        if self.value & Column.TEXT:
+            ans.append("text")
+        if self.value & Column.META:
+            ans.append("meta")
+        if self.value & Column.EMBEDDING:
+            ans.append("embedding")
+        return UniqueConstraint(*ans)
 
 
 class RecordORM(DeclarativeBase):
